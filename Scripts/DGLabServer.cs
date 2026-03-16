@@ -57,6 +57,15 @@ public class DGLabServer
         _config = config;
     }
 
+    /// <summary>
+    /// 获取 DG-LAB APP 扫码连接 URL。
+    /// </summary>
+    public string GetConnectUrl()
+    {
+        var localIp = DetectLocalIp();
+        return $"https://www.dungeon-lab.com/app-download.php#DGLAB-SOCKET#ws://{localIp}:{_config.Port}/{_clientId}";
+    }
+
     // #region 服务端控制
 
     public void Start()
@@ -69,8 +78,32 @@ public class DGLabServer
     {
         _cts?.Cancel();
         try { _appSocket?.CloseAsync(WebSocketCloseStatus.NormalClosure, "shutdown", CancellationToken.None).Wait(2000); } catch { }
+        _appSocket = null;
+        _isBound = false;
         try { _listener?.Stop(); } catch { }
-        _sendLock.Dispose();
+        _listener = null;
+    }
+
+    /// <summary>
+    /// 重启服务端（端口变更后调用）。
+    /// </summary>
+    public void Restart()
+    {
+        Log.Info($"[TazeU] Restarting WS server on port {_config.Port}...");
+        Stop();
+        Start();
+    }
+
+    /// <summary>
+    /// 主动断开当前 APP 连接。
+    /// </summary>
+    public void Disconnect()
+    {
+        if (_appSocket?.State != WebSocketState.Open) return;
+        _isBound = false;
+        try { _appSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "disconnect", CancellationToken.None).Wait(2000); } catch { }
+        _appSocket = null;
+        Log.Info("[TazeU] Disconnected from APP");
     }
 
     /// <summary>

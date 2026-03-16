@@ -4,5 +4,6 @@
   "damageCap": 20,
   "waveform": "Breath",
   "useChannelA": true,
-  "useChannelB": true
+  "useChannelB": true,
+  "testDamage": 5
 }

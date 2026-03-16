@@ -29,6 +29,9 @@ public class TazeUConfig
     /// <summary>是否启用 B 通道。</summary>
     public bool UseChannelB { get; set; } = true;
 
+    /// <summary>测试电击伤害值（用于调试校准）。</summary>
+    public int TestDamage { get; set; } = 5;
+
     // ── 序列化选项 ──────────────────────────────────────
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -93,5 +96,6 @@ public class TazeUConfig
         Port = Math.Clamp(Port, 1024, 65535);
         MinStrength = Math.Clamp(MinStrength, 0, 200);
         DamageCap = Math.Max(DamageCap, 1);
+        TestDamage = Math.Max(TestDamage, 1);
     }
 }

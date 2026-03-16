@@ -1,0 +1,234 @@
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using MegaCrit.Sts2.Core.Logging;
+
+namespace TazeU.Scripts;
+
+/// <summary>
+/// 通过反射零依赖接入 ModConfig-STS2。
+/// 玩家未安装 ModConfig 时 Mod 照常运行，所有值走 TazeUConfig.json 默认。
+/// </summary>
+internal static class ModConfigBridge
+{
+    private const string ModId = "sts2.tazeu";
+
+    private static bool _detected;
+    private static bool _available;
+    private static Type? _apiType;
+    private static Type? _entryType;
+    private static Type? _configType;
+
+    // 快捷键值（Godot Key 码），由 ModConfig 管理
+    internal static long ShowQRKey { get; private set; }
+    internal static long TestShockKey { get; private set; }
+    internal static long DisconnectKey { get; private set; }
+
+    internal static bool IsAvailable
+    {
+        get
+        {
+            if (!_detected)
+            {
+                _detected = true;
+                _apiType = Type.GetType("ModConfig.ModConfigApi, ModConfig");
+                _entryType = Type.GetType("ModConfig.ConfigEntry, ModConfig");
+                _configType = Type.GetType("ModConfig.ConfigType, ModConfig");
+                _available = _apiType != null && _entryType != null && _configType != null;
+            }
+            return _available;
+        }
+    }
+
+    /// <summary>
+    /// 向 ModConfig 注册所有配置项。需在 SceneTree 延迟两帧后调用。
+    /// </summary>
+    internal static void Register(TazeUConfig config, DGLabServer server)
+    {
+        if (!IsAvailable) return;
+
+        try
+        {
+            var originalPort = config.Port;
+            DeferredRegister(config, server);
+
+            // SyncSavedValues 可能从 ModConfig 持久化中恢复了不同的端口
+            // 此时服务端已在旧端口运行，需要重启
+            if (config.Port != originalPort)
+            {
+                Log.Info($"[TazeU] Port changed from ModConfig persistence ({originalPort} → {config.Port}), restarting server...");
+                server.Restart();
+            }
+        }
+        catch (Exception e)
+        {
+            Log.Info($"[TazeU] ModConfig registration failed: {e}");
+        }
+    }
+
+    private static void DeferredRegister(TazeUConfig config, DGLabServer server)
+    {
+        var waveformOptions = new[]
+        {
+            "Breath", "Tide", "Batter", "Pinch", "PinchRamp",
+            "Heartbeat", "Squeeze", "Rhythm", "Random"
+        };
+
+        var entries = new[]
+        {
+            // ── 连接 ──
+            MakeEntry("header_connection", "", ConfigTypeValue("Header"),
+                labels: new() { { "en", "Connection" }, { "zhs", "连接" } }),
+
+            MakeEntry("port", "Port", ConfigTypeValue("Slider"),
+                defaultValue: (float)config.Port, min: 1024, max: 65535, step: 1,
+                labels: new() { { "en", "Port" }, { "zhs", "端口" } },
+                descriptions: new() { { "en", "WebSocket port (auto-restarts server)" }, { "zhs", "WebSocket 端口（修改后自动重启服务）" } },
+                onChanged: v => { config.Port = (int)(float)v; server.Restart(); }),
+
+            MakeEntry("show_qr_key", "Show QR Code", ConfigTypeValue("KeyBind"),
+                defaultValue: (long)0,
+                labels: new() { { "en", "Show QR Code" }, { "zhs", "显示二维码" } },
+                descriptions: new() { { "en", "Press to show/hide DG-LAB connection QR code" }, { "zhs", "按下显示/隐藏 DG-LAB 连接二维码" } },
+                onChanged: v => ShowQRKey = Convert.ToInt64(v)),
+
+            MakeEntry("disconnect_key", "Disconnect", ConfigTypeValue("KeyBind"),
+                defaultValue: (long)0,
+                labels: new() { { "en", "Disconnect" }, { "zhs", "断开连接" } },
+                descriptions: new() { { "en", "Press to disconnect current APP" }, { "zhs", "按下断开当前 APP 连接" } },
+                onChanged: v => DisconnectKey = Convert.ToInt64(v)),
+
+            // ── 电击设置 ──
+            MakeEntry("header_shock", "", ConfigTypeValue("Header"),
+                labels: new() { { "en", "Shock Settings" }, { "zhs", "电击设置" } }),
+
+            MakeEntry("min_strength", "Min Strength", ConfigTypeValue("Slider"),
+                defaultValue: (float)config.MinStrength, min: 0, max: 200, step: 1,
+                labels: new() { { "en", "Min Strength" }, { "zhs", "最低强度" } },
+                descriptions: new() { { "en", "Minimum output strength (0-200)" }, { "zhs", "最低输出强度（0-200）" } },
+                onChanged: v => config.MinStrength = (int)(float)v),
+
+            MakeEntry("damage_cap", "Damage Cap", ConfigTypeValue("Slider"),
+                defaultValue: (float)config.DamageCap, min: 1, max: 100, step: 1,
+                labels: new() { { "en", "Damage Cap" }, { "zhs", "伤害上限" } },
+                descriptions: new() { { "en", "Damage at which max strength is reached" }, { "zhs", "达到最大强度对应的伤害值" } },
+                onChanged: v => config.DamageCap = Math.Max(1, (int)(float)v)),
+
+            MakeEntry("waveform", "Waveform", ConfigTypeValue("Dropdown"),
+                defaultValue: config.Waveform,
+                options: waveformOptions,
+                labels: new() { { "en", "Waveform" }, { "zhs", "波形" } },
+                onChanged: v => config.Waveform = (string)v),
+
+            MakeEntry("use_channel_a", "Channel A", ConfigTypeValue("Toggle"),
+                defaultValue: config.UseChannelA,
+                labels: new() { { "en", "Channel A" }, { "zhs", "A 通道" } },
+                onChanged: v => config.UseChannelA = (bool)v),
+
+            MakeEntry("use_channel_b", "Channel B", ConfigTypeValue("Toggle"),
+                defaultValue: config.UseChannelB,
+                labels: new() { { "en", "Channel B" }, { "zhs", "B 通道" } },
+                onChanged: v => config.UseChannelB = (bool)v),
+
+            // ── 测试 ──
+            MakeEntry("header_test", "", ConfigTypeValue("Header"),
+                labels: new() { { "en", "Test" }, { "zhs", "测试" } }),
+
+            MakeEntry("test_damage", "Test Damage", ConfigTypeValue("Slider"),
+                defaultValue: (float)config.TestDamage, min: 1, max: 50, step: 1,
+                labels: new() { { "en", "Test Damage" }, { "zhs", "测试伤害值" } },
+                descriptions: new() { { "en", "Damage value for test shock" }, { "zhs", "测试电击的模拟伤害值" } },
+                onChanged: v => config.TestDamage = Math.Max(1, (int)(float)v)),
+
+            MakeEntry("test_shock_key", "Test Shock", ConfigTypeValue("KeyBind"),
+                defaultValue: (long)0,
+                labels: new() { { "en", "Test Shock" }, { "zhs", "测试电击" } },
+                descriptions: new() { { "en", "Press to trigger a test shock" }, { "zhs", "按下触发一次测试电击" } },
+                onChanged: v => TestShockKey = Convert.ToInt64(v)),
+        };
+
+        // 创建正确类型的 ConfigEntry[] 数组（object[] 无法匹配 Register 签名）
+        var typedEntries = Array.CreateInstance(_entryType!, entries.Length);
+        for (int i = 0; i < entries.Length; i++)
+            typedEntries.SetValue(entries[i], i);
+
+        var displayNames = new Dictionary<string, string>
+        {
+            { "en", "TazeU" },
+            { "zhs", "TazeU 电击联动" }
+        };
+
+        // Register(modId, displayName, displayNames, entries)
+        var register = _apiType!.GetMethod("Register",
+            [typeof(string), typeof(string), typeof(Dictionary<string, string>), typedEntries.GetType()]);
+        register?.Invoke(null, [ModId, "TazeU", displayNames, typedEntries]);
+
+        // ModConfig.LoadValues 不触发 OnChanged，需手动同步已持久化的值
+        SyncSavedValues(config);
+
+        Log.Info("[TazeU] ModConfig registered");
+    }
+
+    /// <summary>
+    /// 注册后从 ModConfig 读回已持久化的值，同步到 TazeUConfig 和快捷键字段。
+    /// 解决二次启动时 LoadValues 不触发 OnChanged 回调的问题。
+    /// </summary>
+    private static void SyncSavedValues(TazeUConfig config)
+    {
+        config.Port = (int)GetValue("port", (float)config.Port);
+        config.MinStrength = (int)GetValue("min_strength", (float)config.MinStrength);
+        config.DamageCap = Math.Max(1, (int)GetValue("damage_cap", (float)config.DamageCap));
+        config.Waveform = GetValue("waveform", config.Waveform);
+        config.UseChannelA = GetValue("use_channel_a", config.UseChannelA);
+        config.UseChannelB = GetValue("use_channel_b", config.UseChannelB);
+        config.TestDamage = Math.Max(1, (int)GetValue("test_damage", (float)config.TestDamage));
+
+        ShowQRKey = GetValue("show_qr_key", 0L);
+        TestShockKey = GetValue("test_shock_key", 0L);
+        DisconnectKey = GetValue("disconnect_key", 0L);
+
+        Log.Info($"[TazeU] Config synced from ModConfig (ShowQR={ShowQRKey}, TestShock={TestShockKey}, Disconnect={DisconnectKey})");
+    }
+
+    // ── 反射工具 ──────────────────────────────────────────
+
+    private static object ConfigTypeValue(string name) =>
+        Enum.Parse(_configType!, name);
+
+    private static object MakeEntry(string key, string label, object type,
+        object? defaultValue = null, float min = 0, float max = 100, float step = 1,
+        string format = "F0", string[]? options = null,
+        Action<object>? onChanged = null,
+        Dictionary<string, string>? labels = null,
+        Dictionary<string, string>? descriptions = null)
+    {
+        var entry = Activator.CreateInstance(_entryType!)!;
+        SetProp(entry, "Key", key);
+        SetProp(entry, "Label", label);
+        SetProp(entry, "Type", type);
+        if (defaultValue != null) SetProp(entry, "DefaultValue", defaultValue);
+        SetProp(entry, "Min", min);
+        SetProp(entry, "Max", max);
+        SetProp(entry, "Step", step);
+        SetProp(entry, "Format", format);
+        if (options != null) SetProp(entry, "Options", options);
+        if (onChanged != null) SetProp(entry, "OnChanged", onChanged);
+        if (labels != null) SetProp(entry, "Labels", labels);
+        if (descriptions != null) SetProp(entry, "Descriptions", descriptions);
+        return entry;
+    }
+
+    private static void SetProp(object obj, string name, object value) =>
+        obj.GetType().GetProperty(name)?.SetValue(obj, value);
+
+    internal static T GetValue<T>(string key, T fallback)
+    {
+        if (!IsAvailable) return fallback;
+        try
+        {
+            var method = _apiType!.GetMethod("GetValue")!.MakeGenericMethod(typeof(T));
+            return (T)method.Invoke(null, [ModId, key])!;
+        }
+        catch { return fallback; }
+    }
+}

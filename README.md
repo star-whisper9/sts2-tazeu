@@ -36,7 +36,7 @@
 
 ### 连接与使用
 
-**注意，截至撰稿，模组仅能在游戏版本 `>=0.99` 中使用，与之对应的是 Steam 中的 `public-beta` 测试版。**如果你有需要在正式版游戏使用，或许可以参见 [BetterSpire2](https://www.nexusmods.com/slaythespire2/mods/2) 在描述中提及的 `替换 Harmony` 的方法。
+**注意，截至撰稿，模组仅能在游戏版本 `>=0.99` 中使用，与之对应的是 Steam 中的 `public-beta` 测试版。** 如果你有需要在正式版游戏使用，或许可以参见 [BetterSpire2](https://www.nexusmods.com/slaythespire2/mods/2) 在描述中提及的 `替换 Harmony` 的方法。
 
 打开游戏并加载 Mod 后，服务将自动启动。请先前往设置界面配置趁手的快捷键，随后按下快捷键召出连接二维码，使用郊狼 3 版本的 App 通过 Socket 连接，扫描二维码进行连接。**你的电脑和手机必须在同一局域网内，IP 将会自动获取**。
 

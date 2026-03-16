@@ -32,7 +32,7 @@ namespace TazeU.Scripts;
 /// </summary>
 public class DGLabServer
 {
-    private HttpListener? _listener;
+    private TcpListener? _listener;
     private CancellationTokenSource? _cts;
     private WebSocket? _appSocket;
     private readonly SemaphoreSlim _sendLock = new(1, 1);
@@ -118,29 +118,21 @@ public class DGLabServer
     {
         try
         {
-            _listener = new HttpListener();
-            _listener.Prefixes.Add($"http://*:{_config.Port}/");
+            _listener = new TcpListener(IPAddress.Any, _config.Port);
             _listener.Start();
 
             var localIp = DetectLocalIp();
             var connectUrl = $"https://www.dungeon-lab.com/app-download.php#DGLAB-SOCKET#ws://{localIp}:{_config.Port}/{_clientId}";
-            Log.Info($"[TazeU] WS server started on port {_config.Port}");
+            Log.Info($"[TazeU] WS server started on port {_config.Port} (TcpListener bypasses http.sys)");
             Log.Info($"[TazeU] DG-LAB connect URL: {connectUrl}");
 
             while (!_cts!.Token.IsCancellationRequested)
             {
-                var context = await _listener.GetContextAsync();
-                if (context.Request.IsWebSocketRequest)
-                {
-                    _ = HandleConnectionAsync(context);
-                }
-                else
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Close();
-                }
+                var client = await _listener.AcceptTcpClientAsync(_cts.Token);
+                _ = HandleConnectionAsync(client);
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             // 仅在非关闭场景下记录错误
@@ -153,12 +145,61 @@ public class DGLabServer
 
     // #region 连接处理
 
-    private async Task HandleConnectionAsync(HttpListenerContext httpContext)
+    private async Task HandleConnectionAsync(TcpClient tcpClient)
     {
         try
         {
-            var wsContext = await httpContext.AcceptWebSocketAsync(null);
-            var socket = wsContext.WebSocket;
+            var stream = tcpClient.GetStream();
+            
+            // 1. 读取 HTTP 握手头（逐字节读取，防止读丢即将到来的 WebSocket 数据帧）
+            var headerBytes = new System.Collections.Generic.List<byte>();
+            var buf = new byte[1];
+            while (await stream.ReadAsync(buf, _cts?.Token ?? CancellationToken.None) > 0)
+            {
+                headerBytes.Add(buf[0]);
+                if (headerBytes.Count >= 4 &&
+                    headerBytes[^4] == '\r' && headerBytes[^3] == '\n' &&
+                    headerBytes[^2] == '\r' && headerBytes[^1] == '\n')
+                {
+                    break;
+                }
+                if (headerBytes.Count > 8192) throw new Exception("HTTP header too long");
+            }
+
+            var requestString = Encoding.UTF8.GetString(headerBytes.ToArray());
+            string? secKey = null;
+            foreach (var line in requestString.Split("\r\n"))
+            {
+                if (line.StartsWith("Sec-WebSocket-Key:", StringComparison.OrdinalIgnoreCase))
+                {
+                    secKey = line.Substring("Sec-WebSocket-Key:".Length).Trim();
+                    break;
+                }
+            }
+
+            if (secKey == null)
+            {
+                tcpClient.Close();
+                return;
+            }
+
+            // 2. 发送 101 Switching Protocols 以完成 WebSocket 握手
+            var acceptKey = Convert.ToBase64String(
+                System.Security.Cryptography.SHA1.HashData(
+                    Encoding.UTF8.GetBytes(secKey + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
+                )
+            );
+
+            var response = "HTTP/1.1 101 Switching Protocols\r\n" +
+                           "Upgrade: websocket\r\n" +
+                           "Connection: Upgrade\r\n" +
+                           $"Sec-WebSocket-Accept: {acceptKey}\r\n\r\n";
+
+            var responseBytes = Encoding.UTF8.GetBytes(response);
+            await stream.WriteAsync(responseBytes, _cts?.Token ?? CancellationToken.None);
+
+            // 3. 升级为 WebSocket
+            var socket = WebSocket.CreateFromStream(stream, isServer: true, subProtocol: null, keepAliveInterval: TimeSpan.FromSeconds(120));
 
             // 替换已有连接
             if (_appSocket?.State == WebSocketState.Open)
@@ -188,6 +229,7 @@ public class DGLabServer
         catch (Exception ex)
         {
             Log.Info($"[TazeU] Connection error: {ex.Message}");
+            tcpClient.Close();
         }
     }
 
@@ -203,6 +245,11 @@ public class DGLabServer
                 {
                     Log.Info("[TazeU] APP disconnected");
                     _isBound = false;
+                    try 
+                    {
+                        await socket.CloseAsync(result.CloseStatus ?? WebSocketCloseStatus.NormalClosure, result.CloseStatusDescription ?? "Closed by client", CancellationToken.None);
+                    }
+                    catch { }
                     break;
                 }
                 var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);

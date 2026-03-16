@@ -1,0 +1,8 @@
+{
+  "port": 9999,
+  "minStrength": 5,
+  "damageCap": 20,
+  "waveform": "Breath",
+  "useChannelA": true,
+  "useChannelB": true
+}

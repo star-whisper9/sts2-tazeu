@@ -30,5 +30,6 @@
     <MakeDir Directories="$(ModOutputDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModOutputDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)/$(MSBuildProjectName).json" DestinationFolder="$(ModOutputDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/tazeu_config.json" DestinationFolder="$(ModOutputDir)" Condition="!Exists('$(ModOutputDir)/tazeu_config.json')" />
   </Target>
 </Project>

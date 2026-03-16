@@ -1,0 +1,12 @@
+{
+  "id": "TazeU",
+  "unique_id": "tazeu",
+  "name": "TazeU",
+  "author": "star-whisper9",
+  "description": "连接鸡煲电球与郊狼",
+  "version": "1.0",
+  "has_pck": false,
+  "has_dll": true,
+  "dependencies": [],
+  "affects_gameplay": false
+}

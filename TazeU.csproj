@@ -1,0 +1,34 @@
+<Project Sdk="Godot.NET.Sdk/4.5.1">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>true</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <Sts2Dir>/Users/star/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources</Sts2Dir>
+    <Sts2DataDir Condition="Exists('$(Sts2Dir)/data_sts2_macos_arm64/sts2.dll')">$(Sts2Dir)/data_sts2_macos_arm64</Sts2DataDir>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and Exists('$(Sts2Dir)/data_sts2_macos_x86_64/sts2.dll')">$(Sts2Dir)/data_sts2_macos_x86_64</Sts2DataDir>
+    <Sts2MacOSDir>$(Sts2Dir)/../MacOS</Sts2MacOSDir>
+    <ModOutputDir>$(Sts2MacOSDir)/mods/$(MSBuildProjectName)</ModOutputDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(Sts2DataDir)/sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="0Harmony">
+      <HintPath>$(Sts2DataDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CopyMod" AfterTargets="Build">
+    <Message Text="Copying mod to Slay the Spire 2 mods folder..." Importance="high" />
+    <MakeDir Directories="$(ModOutputDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModOutputDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/$(MSBuildProjectName).json" DestinationFolder="$(ModOutputDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

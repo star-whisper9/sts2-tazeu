@@ -143,6 +143,36 @@ internal static class ModConfigBridge
                 labels: new() { { "en", "Channel B" }, { "zhs", "B 通道" } },
                 onChanged: v => config.UseChannelB = (bool)v),
 
+            // ── 连击递增 ──
+            MakeEntry("header_combo", "", ConfigTypeValue("Header"),
+                labels: new() { { "en", "Combo Escalation" }, { "zhs", "连击递增" } }),
+
+            MakeEntry("combo_enabled", "Combo Enabled", ConfigTypeValue("Toggle"),
+                defaultValue: config.ComboEnabled,
+                labels: new() { { "en", "Enable Combo" }, { "zhs", "启用连击递增" } },
+                descriptions: new() { { "en", "Consecutive shocks within the time window will escalate intensity" }, { "zhs", "在时间窗口内连续触发电击时强度逐步递增" } },
+                onChanged: v => config.ComboEnabled = (bool)v),
+
+            MakeEntry("combo_rate", "Combo Rate", ConfigTypeValue("Slider"),
+                defaultValue: (float)(config.ComboRate * 100), min: 5, max: 100, step: 5,
+                format: "F0",
+                labels: new() { { "en", "Escalation Per Stack (%)" }, { "zhs", "每层递增比例 (%)" } },
+                descriptions: new() { { "en", "Strength increase per combo stack (e.g. 15 = +15% per stack)" }, { "zhs", "每层连击增加的强度百分比（如 15 = 每层+15%）" } },
+                onChanged: v => config.ComboRate = (float)v / 100f),
+
+            MakeEntry("combo_window", "Combo Window", ConfigTypeValue("Slider"),
+                defaultValue: config.ComboWindow, min: 1, max: 30, step: 1,
+                format: "F0",
+                labels: new() { { "en", "Combo Window (sec)" }, { "zhs", "连击窗口 (秒)" } },
+                descriptions: new() { { "en", "Time window to maintain combo (resets if no shock within this period)" }, { "zhs", "维持连击的时间窗口（超时未触发则重置）" } },
+                onChanged: v => config.ComboWindow = (float)v),
+
+            MakeEntry("combo_max", "Combo Max Stacks", ConfigTypeValue("Slider"),
+                defaultValue: (float)config.ComboMaxStacks, min: 1, max: 50, step: 1,
+                labels: new() { { "en", "Max Stacks" }, { "zhs", "最大叠加层数" } },
+                descriptions: new() { { "en", "Maximum combo stacks (caps the escalation)" }, { "zhs", "连击最大叠加次数（防止无限递增）" } },
+                onChanged: v => config.ComboMaxStacks = Math.Max(1, (int)(float)v)),
+
             // ── 测试 ──
             MakeEntry("header_test", "", ConfigTypeValue("Header"),
                 labels: new() { { "en", "Test" }, { "zhs", "测试" } }),
@@ -195,6 +225,10 @@ internal static class ModConfigBridge
         config.Waveform = GetValue("waveform", config.Waveform);
         config.UseChannelA = GetValue("use_channel_a", config.UseChannelA);
         config.UseChannelB = GetValue("use_channel_b", config.UseChannelB);
+        config.ComboEnabled = GetValue("combo_enabled", config.ComboEnabled);
+        config.ComboRate = GetValue("combo_rate", config.ComboRate * 100f) / 100f;
+        config.ComboWindow = GetValue("combo_window", config.ComboWindow);
+        config.ComboMaxStacks = Math.Max(1, (int)GetValue("combo_max", (float)config.ComboMaxStacks));
         config.TestDamage = Math.Max(1, (int)GetValue("test_damage", (float)config.TestDamage));
 
         ShowQRKey = GetValue("show_qr_key", 0L);

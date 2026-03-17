@@ -44,6 +44,10 @@ public class DGLabServer
     private readonly TazeUConfig _config;
     private readonly Random _random = new();
 
+    // Combo 连击状态
+    private int _comboCount;
+    private DateTime _lastShockTime = DateTime.MinValue;
+
     public bool IsConnected => _appSocket?.State == WebSocketState.Open && _isBound;
 
     // APP 回传的通道上限与当前值
@@ -390,9 +394,23 @@ public class DGLabServer
     {
         if (!IsConnected) return;
         int damage = (int)Math.Max(damageValue, 0);
-        int strengthA = _config.UseChannelA ? MapDamageToStrength(damage, _strengthLimitA) : 0;
-        int strengthB = _config.UseChannelB ? MapDamageToStrength(damage, _strengthLimitB) : 0;
-        Log.Info($"[TazeU] Shock triggered (damage={damage}, A={strengthA}/{_strengthLimitA}, B={strengthB}/{_strengthLimitB})");
+
+        // Combo 连击递增：乘数作用在伤害输入端，借助 Stevens 压缩曲线自然趋近上限
+        double effectiveDamage = damage;
+        if (_config.ComboEnabled)
+        {
+            var now = DateTime.UtcNow;
+            if ((now - _lastShockTime).TotalSeconds <= _config.ComboWindow)
+                _comboCount = Math.Min(_comboCount + 1, _config.ComboMaxStacks);
+            else
+                _comboCount = 0;
+            _lastShockTime = now;
+            effectiveDamage = damage * (1.0 + _comboCount * _config.ComboRate);
+        }
+
+        int strengthA = _config.UseChannelA ? MapDamageToStrength(effectiveDamage, _strengthLimitA) : 0;
+        int strengthB = _config.UseChannelB ? MapDamageToStrength(effectiveDamage, _strengthLimitB) : 0;
+        Log.Info($"[TazeU] Shock triggered (damage={damage}, combo={_comboCount}, effective={effectiveDamage:F1}, A={strengthA}/{_strengthLimitA}, B={strengthB}/{_strengthLimitB})");
         _ = Task.Run(() => ExecuteShockAsync(strengthA, strengthB));
     }
 
@@ -400,10 +418,10 @@ public class DGLabServer
     /// Stevens 幂律逆映射：damage → [MinStrength, maxStrength]。
     /// 感知强度 S ∝ I^3.5，为使感知与伤害成正比，需 I ∝ damage^(1/3.5)。
     /// </summary>
-    private int MapDamageToStrength(int damage, int maxStrength)
+    private int MapDamageToStrength(double damage, int maxStrength)
     {
         if (maxStrength <= _config.MinStrength) return maxStrength;
-        double ratio = Math.Pow((double)damage / _config.DamageCap, 1.0 / 3.5);
+        double ratio = Math.Pow(damage / _config.DamageCap, 1.0 / 3.5);
         ratio = Math.Clamp(ratio, 0.0, 1.0);
         return _config.MinStrength + (int)Math.Round((maxStrength - _config.MinStrength) * ratio);
     }

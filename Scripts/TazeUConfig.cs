@@ -18,7 +18,7 @@ public class TazeUConfig
     public int MinStrength { get; set; } = 5;
 
     /// <summary>伤害映射上限，超出后输出满强度。</summary>
-    public int DamageCap { get; set; } = 20;
+    public int DamageCap { get; set; } = 25;
 
     /// <summary>
     /// 波形预设名称。可选值：Breath, Tide, Batter, Pinch, PinchRamp, Heartbeat, Squeeze, Rhythm, Random。
@@ -32,8 +32,20 @@ public class TazeUConfig
     /// <summary>是否启用 B 通道。</summary>
     public bool UseChannelB { get; set; } = true;
 
+    /// <summary>是否启用连击递增模式。</summary>
+    public bool ComboEnabled { get; set; } = false;
+
+    /// <summary>连击递增系数（每层 combo 增加的强度百分比，如 0.15 = +15%/层）。</summary>
+    public float ComboRate { get; set; } = 0.15f;
+
+    /// <summary>连击时间窗口（秒）。超过该时间未触发电击则 combo 重置。</summary>
+    public float ComboWindow { get; set; } = 3.0f;
+
+    /// <summary>连击最大叠加层数（防止无限叠加）。</summary>
+    public int ComboMaxStacks { get; set; } = 8;
+
     /// <summary>测试电击伤害值（用于调试校准）。</summary>
-    public int TestDamage { get; set; } = 5;
+    public int TestDamage { get; set; } = 3;
 
     // ── 序列化选项 ──────────────────────────────────────
 
@@ -99,6 +111,9 @@ public class TazeUConfig
         Port = Math.Clamp(Port, 1024, 65535);
         MinStrength = Math.Clamp(MinStrength, 0, 200);
         DamageCap = Math.Max(DamageCap, 1);
+        ComboRate = Math.Clamp(ComboRate, 0f, 1f);
+        ComboWindow = Math.Clamp(ComboWindow, 1f, 30f);
+        ComboMaxStacks = Math.Clamp(ComboMaxStacks, 1, 50);
         TestDamage = Math.Max(TestDamage, 1);
     }
 }

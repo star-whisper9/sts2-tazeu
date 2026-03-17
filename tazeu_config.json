@@ -5,6 +5,10 @@
   "waveform": "Breath",
   "useChannelA": true,
   "useChannelB": true,
-  "testDamage": 5,
-  "bindAddress": ""
+  "testDamage": 3,
+  "bindAddress": "",
+  "comboEnabled": false,
+  "comboRate": 0.15,
+  "comboWindow": 3.0,
+  "comboMaxStacks": 8
 }

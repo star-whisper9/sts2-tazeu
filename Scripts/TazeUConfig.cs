@@ -71,13 +71,13 @@ public class TazeUConfig
                 var json = File.ReadAllText(ConfigPath);
                 var config = JsonSerializer.Deserialize<TazeUConfig>(json, JsonOptions) ?? new TazeUConfig();
                 config.Validate();
-                Log.Info($"[TazeU] Config loaded from {ConfigPath}");
+                Log.Debug($"[TazeU] Config loaded from {ConfigPath}");
                 return config;
             }
         }
         catch (Exception ex)
         {
-            Log.Info($"[TazeU] Config load error, using defaults: {ex.Message}");
+            Log.Error($"[TazeU] Config load error, using defaults: {ex.Message}");
         }
 
         var defaultConfig = new TazeUConfig();
@@ -98,11 +98,11 @@ public class TazeUConfig
 
             var json = JsonSerializer.Serialize(this, JsonOptions);
             File.WriteAllText(ConfigPath, json);
-            Log.Info($"[TazeU] Config saved to {ConfigPath}");
+            Log.Debug($"[TazeU] Config saved to {ConfigPath}");
         }
         catch (Exception ex)
         {
-            Log.Info($"[TazeU] Config save error: {ex.Message}");
+            Log.Error($"[TazeU] Config save error: {ex.Message}");
         }
     }
 

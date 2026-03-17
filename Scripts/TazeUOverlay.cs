@@ -35,7 +35,7 @@ internal partial class TazeUOverlay : Node
         else if (keyCode != 0 && keyCode == ModConfigBridge.TestShockKey)
         {
             _server.TriggerShock(_config.TestDamage);
-            Log.Info($"[TazeU] Test shock triggered (damage={_config.TestDamage})");
+            Log.Debug($"[TazeU] Test shock triggered (damage={_config.TestDamage})");
             GetViewport().SetInputAsHandled();
         }
         else if (keyCode != 0 && keyCode == ModConfigBridge.DisconnectKey)
@@ -69,7 +69,7 @@ internal partial class TazeUOverlay : Node
         }
         catch (System.Exception ex)
         {
-            Log.Info($"[TazeU] QR generation failed: {ex.Message}");
+            Log.Error($"[TazeU] QR generation failed: {ex.Message}");
             return;
         }
 
@@ -166,7 +166,7 @@ internal partial class TazeUOverlay : Node
 
         AddChild(_qrLayer);
         _qrVisible = true;
-        Log.Info("[TazeU] QR popup shown");
+        Log.Debug("[TazeU] QR popup shown");
     }
 
     private void HideQR()

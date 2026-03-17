@@ -57,29 +57,25 @@ internal static class ModConfigBridge
             // 此时服务端已在旧端口运行，需要重启
             if (config.Port != originalPort)
             {
-                Log.Info($"[TazeU] Port changed from ModConfig persistence ({originalPort} → {config.Port}), restarting server...");
+                Log.Debug($"[TazeU] Port changed from ModConfig persistence ({originalPort} → {config.Port}), restarting server...");
                 server.Restart();
             }
 
             if (config.BindAddress != originalAddress)
             {
-                Log.Info($"[TazeU] BindAddress changed from ModConfig persistence ({originalAddress} → {config.BindAddress}), restarting server...");
+                Log.Debug($"[TazeU] BindAddress changed from ModConfig persistence ({originalAddress} → {config.BindAddress}), restarting server...");
                 server.Restart();
             }
         }
         catch (Exception e)
         {
-            Log.Info($"[TazeU] ModConfig registration failed: {e}");
+            Log.Error($"[TazeU] ModConfig registration failed: {e}");
         }
     }
 
     private static void DeferredRegister(TazeUConfig config, DGLabServer server)
     {
-        var waveformOptions = new[]
-        {
-            "Breath", "Tide", "Batter", "Pinch", "PinchRamp",
-            "Heartbeat", "Squeeze", "Rhythm", "Random"
-        };
+        var waveformOptions = server.GetAllWaveformNames();
 
         var entries = new[]
         {
@@ -209,7 +205,7 @@ internal static class ModConfigBridge
         // ModConfig.LoadValues 不触发 OnChanged，需手动同步已持久化的值
         SyncSavedValues(config);
 
-        Log.Info("[TazeU] ModConfig registered");
+        Log.Debug("[TazeU] ModConfig registered");
     }
 
     /// <summary>
@@ -235,7 +231,7 @@ internal static class ModConfigBridge
         TestShockKey = GetValue("test_shock_key", 0L);
         DisconnectKey = GetValue("disconnect_key", 0L);
 
-        Log.Info($"[TazeU] Config synced from ModConfig (ShowQR={ShowQRKey}, TestShock={TestShockKey}, Disconnect={DisconnectKey})");
+        Log.Debug($"[TazeU] Config synced from ModConfig (ShowQR={ShowQRKey}, TestShock={TestShockKey}, Disconnect={DisconnectKey})");
     }
 
     // ── 反射工具 ──────────────────────────────────────────

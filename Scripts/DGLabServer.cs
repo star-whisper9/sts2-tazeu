@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -48,6 +49,9 @@ public class DGLabServer
     private int _comboCount;
     private DateTime _lastShockTime = DateTime.MinValue;
 
+    // 自定义波形
+    private Dictionary<string, CustomWaveform> _customWaveforms = new(StringComparer.OrdinalIgnoreCase);
+
     public bool IsConnected => _appSocket?.State == WebSocketState.Open && _isBound;
 
     // APP 回传的通道上限与当前值
@@ -93,7 +97,7 @@ public class DGLabServer
     /// </summary>
     public void Restart()
     {
-        Log.Info($"[TazeU] Restarting WS server on port {_config.Port}...");
+        Log.Debug($"[TazeU] Restarting WS server on port {_config.Port}...");
         Stop();
         Start();
     }
@@ -107,7 +111,7 @@ public class DGLabServer
         _isBound = false;
         try { _appSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "disconnect", CancellationToken.None).Wait(2000); } catch { }
         _appSocket = null;
-        Log.Info("[TazeU] Disconnected from APP");
+        Log.Debug("[TazeU] Disconnected from APP");
     }
 
     /// <summary>
@@ -141,7 +145,7 @@ public class DGLabServer
         {
             // 仅在非关闭场景下记录错误
             if (_cts is not { IsCancellationRequested: true })
-                Log.Info($"[TazeU] WS server error: {ex.Message}");
+                Log.Error($"[TazeU] WS server error: {ex.Message}");
         }
     }
 
@@ -225,14 +229,14 @@ public class DGLabServer
                 targetId = "",
                 message = "targetId"
             }));
-            Log.Info($"[TazeU] APP connected, assigned targetId={_targetId}, awaiting bind...");
+            Log.Debug($"[TazeU] APP connected, assigned targetId={_targetId}, awaiting bind...");
 
             // Step 2: 接收循环中处理 bind 请求及后续消息
             await ReceiveLoopAsync(socket);
         }
         catch (Exception ex)
         {
-            Log.Info($"[TazeU] Connection error: {ex.Message}");
+            Log.Error($"[TazeU] Connection error: {ex.Message}");
             tcpClient.Close();
         }
     }
@@ -247,7 +251,7 @@ public class DGLabServer
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    Log.Info("[TazeU] APP disconnected");
+                    Log.Debug("[TazeU] APP disconnected");
                     _isBound = false;
                     try 
                     {
@@ -263,7 +267,7 @@ public class DGLabServer
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Log.Info($"[TazeU] Receive error: {ex.Message}");
+            Log.Error($"[TazeU] Receive error: {ex.Message}");
             _isBound = false;
         }
     }
@@ -289,12 +293,12 @@ public class DGLabServer
                         message = "200" // 成功码
                     }));
                     _isBound = true;
-                    Log.Info("[TazeU] Bind confirmed");
+                    Log.Debug("[TazeU] Bind confirmed");
 
                     // 绑定完成后，设置双通道强度为 0 以触发 APP 回传当前上限
                     await SendCommandAsync(DGLabProtocol.StrengthCommand(1, 2, 0));
                     await SendCommandAsync(DGLabProtocol.StrengthCommand(2, 2, 0));
-                    Log.Info("[TazeU] Initial strength query sent");
+                    Log.Debug("[TazeU] Initial strength query sent");
                     break;
 
                 case "msg":
@@ -304,14 +308,14 @@ public class DGLabServer
                     break;
 
                 default:
-                    Log.Info($"[TazeU] Unknown message type: {type}");
+                    Log.Debug($"[TazeU] Unknown message type: {type}");
                     Log.Debug($"[TazeU] Full message: {rawMessage}");
                     break;
             }
         }
         catch (Exception ex)
         {
-            Log.Info($"[TazeU] Message parse error: {ex.Message}");
+            Log.Error($"[TazeU] Message parse error: {ex.Message}");
         }
     }
 
@@ -334,17 +338,17 @@ public class DGLabServer
                 _currentStrengthB = currentB;
                 _strengthLimitA = limitA;
                 _strengthLimitB = limitB;
-                Log.Info($"[TazeU] Strength feedback: A={currentA}/{limitA}, B={currentB}/{limitB}");
+                Log.Debug($"[TazeU] Strength feedback: A={currentA}/{limitA}, B={currentB}/{limitB}");
             }
         }
         else if (message.StartsWith("feedback-"))
         {
             // APP 端用户按钮操作反馈（0~4=A通道, 5~9=B通道）
-            Log.Info($"[TazeU] APP feedback: {message}");
+            Log.Debug($"[TazeU] APP feedback: {message}");
         }
         else
         {
-            Log.Info($"[TazeU] APP message: {message}");
+            Log.Debug($"[TazeU] APP message: {message}");
         }
     }
 
@@ -365,7 +369,7 @@ public class DGLabServer
                 endOfMessage: true,
                 _cts?.Token ?? CancellationToken.None);
         }
-        catch (Exception ex) { Log.Info($"[TazeU] Send error: {ex.Message}"); }
+        catch (Exception ex) { Log.Error($"[TazeU] Send error: {ex.Message}"); }
         finally { _sendLock.Release(); }
     }
 
@@ -410,7 +414,7 @@ public class DGLabServer
 
         int strengthA = _config.UseChannelA ? MapDamageToStrength(effectiveDamage, _strengthLimitA) : 0;
         int strengthB = _config.UseChannelB ? MapDamageToStrength(effectiveDamage, _strengthLimitB) : 0;
-        Log.Info($"[TazeU] Shock triggered (damage={damage}, combo={_comboCount}, effective={effectiveDamage:F1}, A={strengthA}/{_strengthLimitA}, B={strengthB}/{_strengthLimitB})");
+        Log.Debug($"[TazeU] Shock triggered (damage={damage}, combo={_comboCount}, effective={effectiveDamage:F1}, A={strengthA}/{_strengthLimitA}, B={strengthB}/{_strengthLimitB})");
         _ = Task.Run(() => ExecuteShockAsync(strengthA, strengthB));
     }
 
@@ -427,17 +431,52 @@ public class DGLabServer
     }
 
     /// <summary>
-    /// 根据配置选择波形预设，支持 Random 模式。
+    /// 根据配置选择波形预设，支持 Random 模式和自定义波形。
     /// </summary>
     private string[] SelectWaveform()
     {
         var name = _config.Waveform;
         if (string.Equals(name, "Random", StringComparison.OrdinalIgnoreCase))
         {
-            var all = DGLabProtocol.AllWaveforms;
-            return all[_random.Next(all.Length)];
+            // 内置 + 自定义波形合并后随机
+            var all = new List<string[]>(DGLabProtocol.AllWaveforms);
+            foreach (var cw in _customWaveforms.Values)
+                all.Add(cw.Data);
+            return all[_random.Next(all.Count)];
         }
-        return DGLabProtocol.GetWaveformByName(name) ?? DGLabProtocol.BreathWaveV3;
+
+        // 先查内置，再查自定义
+        var builtin = DGLabProtocol.GetWaveformByName(name);
+        if (builtin != null) return builtin;
+
+        if (_customWaveforms.TryGetValue(name, out var custom))
+            return custom.Data;
+
+        return DGLabProtocol.BreathWaveV3;
+    }
+
+    /// <summary>
+    /// 加载自定义波形文件。启动时及需要刷新时调用。
+    /// </summary>
+    internal void LoadCustomWaveforms()
+    {
+        _customWaveforms = CustomWaveformLoader.LoadAll();
+    }
+
+    /// <summary>
+    /// 获取所有可用波形名称（内置 + 自定义 + Random）。
+    /// </summary>
+    internal string[] GetAllWaveformNames()
+    {
+        var names = new List<string>
+        {
+            "Breath", "Tide", "Batter", "Pinch", "PinchRamp",
+            "Heartbeat", "Squeeze", "Rhythm"
+        };
+        foreach (var kvp in _customWaveforms)
+            names.Add(kvp.Key);
+        names.Add("Random");
+        return names.ToArray();
     }
 
     private async Task ExecuteShockAsync(int strengthA, int strengthB)
@@ -460,7 +499,7 @@ public class DGLabServer
         }
         catch (Exception ex)
         {
-            Log.Info($"[TazeU] Shock execution error: {ex.Message}");
+            Log.Error($"[TazeU] Shock execution error: {ex.Message}");
         }
     }
 

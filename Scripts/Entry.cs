@@ -32,6 +32,7 @@ public class Entry
 
         Config = TazeUConfig.Load();
         Server = new DGLabServer(Config);
+        Server.LoadCustomWaveforms();
         Server.Start();
 
         // 延迟注册 ModConfig + 挂载 Overlay（等待 SceneTree 就绪）

@@ -11,6 +11,9 @@ public class TazeUConfig
     /// <summary>WS 监听端口。</summary>
     public int Port { get; set; } = 9999;
 
+    /// <summary>自定义监听/连接 IP 地址。留空或不合法时自动获取局域网 IP。</summary>
+    public string BindAddress { get; set; } = "";
+
     /// <summary>最低输出强度（Mod 侧配置，0-200）。</summary>
     public int MinStrength { get; set; } = 5;
 

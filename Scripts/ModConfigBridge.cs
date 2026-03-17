@@ -49,6 +49,7 @@ internal static class ModConfigBridge
 
         try
         {
+            var originalAddress = config.BindAddress;
             var originalPort = config.Port;
             DeferredRegister(config, server);
 
@@ -57,6 +58,12 @@ internal static class ModConfigBridge
             if (config.Port != originalPort)
             {
                 Log.Info($"[TazeU] Port changed from ModConfig persistence ({originalPort} → {config.Port}), restarting server...");
+                server.Restart();
+            }
+
+            if (config.BindAddress != originalAddress)
+            {
+                Log.Info($"[TazeU] BindAddress changed from ModConfig persistence ({originalAddress} → {config.BindAddress}), restarting server...");
                 server.Restart();
             }
         }
@@ -85,6 +92,12 @@ internal static class ModConfigBridge
                 labels: new() { { "en", "Port" }, { "zhs", "端口" } },
                 descriptions: new() { { "en", "WebSocket port (auto-restarts server)" }, { "zhs", "WebSocket 端口（修改后自动重启服务）" } },
                 onChanged: v => { config.Port = (int)(float)v; server.Restart(); }),
+
+            MakeEntry("bind_address", "Bind Address", ConfigTypeValue("TextInput"),
+                defaultValue: config.BindAddress,
+                labels: new() { { "en", "Bind Address" }, { "zhs", "绑定 IP 地址" } },
+                descriptions: new() { { "en", "Override the IP address used for connection (Leave empty to auto-detect)" }, { "zhs", "覆盖用于连接的 IP 地址（多网卡连接失败时使用，留空自动检测）" } },
+                onChanged: v => { config.BindAddress = (string)v; server.Restart(); }),
 
             MakeEntry("show_qr_key", "Show QR Code", ConfigTypeValue("KeyBind"),
                 defaultValue: (long)0,
@@ -176,6 +189,7 @@ internal static class ModConfigBridge
     private static void SyncSavedValues(TazeUConfig config)
     {
         config.Port = (int)GetValue("port", (float)config.Port);
+        config.BindAddress = GetValue("bind_address", config.BindAddress);
         config.MinStrength = (int)GetValue("min_strength", (float)config.MinStrength);
         config.DamageCap = Math.Max(1, (int)GetValue("damage_cap", (float)config.DamageCap));
         config.Waveform = GetValue("waveform", config.Waveform);

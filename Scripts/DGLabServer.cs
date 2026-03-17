@@ -62,7 +62,7 @@ public class DGLabServer
     /// </summary>
     public string GetConnectUrl()
     {
-        var localIp = DetectLocalIp();
+        var localIp = GetIpAddress();
         return $"https://www.dungeon-lab.com/app-download.php#DGLAB-SOCKET#ws://{localIp}:{_config.Port}/{_clientId}";
     }
 
@@ -121,7 +121,7 @@ public class DGLabServer
             _listener = new TcpListener(IPAddress.Any, _config.Port);
             _listener.Start();
 
-            var localIp = DetectLocalIp();
+            var localIp = GetIpAddress();
             var connectUrl = $"https://www.dungeon-lab.com/app-download.php#DGLAB-SOCKET#ws://{localIp}:{_config.Port}/{_clientId}";
             Log.Info($"[TazeU] WS server started on port {_config.Port} (TcpListener bypasses http.sys)");
             Log.Info($"[TazeU] DG-LAB connect URL: {connectUrl}");
@@ -447,6 +447,18 @@ public class DGLabServer
     }
 
     // #endregion
+
+    /// <summary>
+    /// 获取当前应该使用的 IP 地址（优先使用用户配置的 BindAddress，否则自动检测）。
+    /// </summary>
+    private string GetIpAddress()
+    {
+        if (!string.IsNullOrWhiteSpace(_config.BindAddress) && IPAddress.TryParse(_config.BindAddress, out _))
+        {
+            return _config.BindAddress.Trim();
+        }
+        return DetectLocalIp();
+    }
 
     /// <summary>
     /// 查找本机局域网 IP（UDP 路由表查询，不实际发送数据）。

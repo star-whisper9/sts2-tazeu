@@ -53,11 +53,13 @@ public class TazeUConfig
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
     };
 
     private static string ConfigPath =>
-        Path.Combine(Path.GetDirectoryName(typeof(TazeUConfig).Assembly.Location)!, "tazeu_config.json");
+        Path.Combine(Path.GetDirectoryName(typeof(TazeUConfig).Assembly.Location)!, "default_config.jsonc");
 
     /// <summary>
     /// 从磁盘加载配置。文件不存在则写入默认配置并返回。

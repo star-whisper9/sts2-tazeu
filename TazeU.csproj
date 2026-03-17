@@ -36,6 +36,6 @@
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModOutputDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(TargetDir)QRCoder.dll" DestinationFolder="$(ModOutputDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)/$(MSBuildProjectName).json" DestinationFolder="$(ModOutputDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/tazeu_config.json" DestinationFolder="$(ModOutputDir)" Condition="!Exists('$(ModOutputDir)/tazeu_config.json')" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/default_config.jsonc" DestinationFolder="$(ModOutputDir)" Condition="!Exists('$(ModOutputDir)/default_config.jsonc')" />
   </Target>
 </Project>

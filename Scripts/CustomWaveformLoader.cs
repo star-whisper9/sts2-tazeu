@@ -17,7 +17,9 @@ internal static class CustomWaveformLoader
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
     };
 
     private static string WaveformDir =>
@@ -38,7 +40,7 @@ internal static class CustomWaveformLoader
             return result;
         }
 
-        foreach (var file in Directory.GetFiles(WaveformDir, "*.json"))
+        foreach (var file in Directory.GetFiles(WaveformDir, "*.jsonc"))
         {
             try
             {

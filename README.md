@@ -82,23 +82,27 @@ _游玩请适当哦~_
 
 #### 自定义波形
 
-你可以通过添加 JSON 文件来扩展波形列表。将 `.json` 文件放入 Mod 目录下的 `waveforms/` 文件夹（首次启动时自动创建）。
+你可以通过添加波形文件来扩展波形列表。将 `.jsonc` 文件放入 Mod 目录下的 `waveforms/` 文件夹（首次启动时自动创建）。文件内容为 JSONC 格式，支持注释。
 
 > 关于 V3 格式波形，请参见郊狼官方文档：  
 > [官方波形示例](https://github.com/DG-LAB-OPENSOURCE/DG-LAB-OPENSOURCE/blob/main/socket/DG_WAVES_V2_V3_simple.js)  
 > [波形协议文档](https://github.com/DG-LAB-OPENSOURCE/DG-LAB-OPENSOURCE/tree/main/coyote/extra)
 
-**JSON 格式**
+**JSONC 格式**
 
-```json
+```jsonc
 {
+  // 在设置中显示的名称
   "name": "我的波形",
-  "data": ["0A0A0A0A64646464", "1E1E1E1E32323232"]
+  "data": [
+    "0A0A0A0A64646464", // 第一帧
+    "1E1E1E1E32323232", // 第二帧
+  ],
 }
 ```
 
 - `name`：在设置中显示的名称
-- `data`：V3 格式波形数据数组，每条为 16 位十六进制字符串（前 8 位 = 4 组频率 10~240，后 8 位 = 4 组强度 0~100），每条代表 100ms 内 4×25ms 的输出
+- `data`：V3 格式波形数据数组，每条为 16 位十六进制字符串（前 8 位 = 4 组频率 10\~240，后 8 位 = 4 组强度 0\~100），每条代表 100ms 内 4×25ms 的输出
 - 波形将在 Mod 启动时加载，出现在波形下拉菜单中，修改自定义波形文件后需要重启游戏才能刷新
 
 ### 连击递增

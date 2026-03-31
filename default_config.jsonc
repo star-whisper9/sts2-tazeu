@@ -6,6 +6,7 @@
   "useChannelA": true,
   "useChannelB": true,
   "onlyOwnOrbs": true,
+  "maxConnections": 8,
   "testDamage": 3,
   "bindAddress": "",
   "comboEnabled": false,

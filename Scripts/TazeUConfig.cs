@@ -45,6 +45,9 @@ public class TazeUConfig
     /// <summary>仅自己的电球触发电击（多人模式下区分玩家）。</summary>
     public bool OnlyOwnOrbs { get; set; } = true;
 
+    /// <summary>最大同时连接数（1:N 模式，默认 8）。</summary>
+    public int MaxConnections { get; set; } = 8;
+
     /// <summary>测试电击伤害值（用于调试校准）。</summary>
     public int TestDamage { get; set; } = 3;
 
@@ -117,6 +120,7 @@ public class TazeUConfig
         ComboRate = Math.Clamp(ComboRate, 0f, 1f);
         ComboWindow = Math.Clamp(ComboWindow, 1f, 30f);
         ComboMaxStacks = Math.Clamp(ComboMaxStacks, 1, 50);
+        MaxConnections = Math.Clamp(MaxConnections, 1, 64);
         TestDamage = Math.Max(TestDamage, 1);
     }
 }

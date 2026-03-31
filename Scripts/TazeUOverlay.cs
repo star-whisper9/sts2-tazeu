@@ -1,5 +1,6 @@
 using Godot;
 using MegaCrit.Sts2.Core.Logging;
+using Timer = Godot.Timer;
 
 namespace TazeU.Scripts;
 
@@ -14,6 +15,9 @@ internal partial class TazeUOverlay(DGLabServer server, TazeUConfig config) : No
 
     private CanvasLayer? _qrLayer;
     private bool _qrVisible;
+    private Label? _statusLabel;
+    private VBoxContainer? _clientListBox;
+    private Timer? _refreshTimer;
 
     public override void _UnhandledKeyInput(InputEvent @event)
     {
@@ -34,7 +38,7 @@ internal partial class TazeUOverlay(DGLabServer server, TazeUConfig config) : No
         }
         else if (keyCode != 0 && keyCode == ModConfigBridge.DisconnectKey)
         {
-            _server.Disconnect();
+            _server.DisconnectAll();
             GetViewport().SetInputAsHandled();
         }
     }
@@ -130,15 +134,28 @@ internal partial class TazeUOverlay(DGLabServer server, TazeUConfig config) : No
         };
 
         // 状态文本
-        var statusText = _server.IsConnected ? "✓ Connected / 已连接" : "Scan with DG-LAB APP / 用 DG-LAB APP 扫码";
-        var status = new Label
+        _statusLabel = new Label
         {
-            Text = statusText,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
-        status.AddThemeColorOverride("font_color",
-            _server.IsConnected ? new Color(0.4f, 0.9f, 0.4f) : new Color(0.7f, 0.7f, 0.7f));
-        status.AddThemeFontSizeOverride("font_size", 16);
+        _statusLabel.AddThemeFontSizeOverride("font_size", 16);
+        UpdateStatusLabel();
+
+        // ── 已连接客户端列表 ──
+        var separator = new HSeparator();
+        separator.AddThemeConstantOverride("separation", 4);
+
+        var clientHeader = new Label
+        {
+            Text = "Connected Clients / 已连接客户端",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        clientHeader.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f));
+        clientHeader.AddThemeFontSizeOverride("font_size", 14);
+
+        _clientListBox = new VBoxContainer();
+        _clientListBox.AddThemeConstantOverride("separation", 6);
+        RefreshClientList();
 
         // 提示
         var hint = new Label
@@ -151,21 +168,112 @@ internal partial class TazeUOverlay(DGLabServer server, TazeUConfig config) : No
 
         vbox.AddChild(title);
         vbox.AddChild(qrRect);
-        vbox.AddChild(status);
+        vbox.AddChild(_statusLabel);
+        vbox.AddChild(separator);
+        vbox.AddChild(clientHeader);
+        vbox.AddChild(_clientListBox);
         vbox.AddChild(hint);
         panel.AddChild(vbox);
         center.AddChild(panel);
         _qrLayer.AddChild(bg);
         _qrLayer.AddChild(center);
 
+        // 1 秒刷新定时器
+        _refreshTimer = new Timer { WaitTime = 1.0, Autostart = true };
+        _refreshTimer.Timeout += OnRefreshTick;
+        _qrLayer.AddChild(_refreshTimer);
+
         AddChild(_qrLayer);
         _qrVisible = true;
         Log.Debug("[TazeU] QR popup shown");
     }
 
+    private void UpdateStatusLabel()
+    {
+        if (_statusLabel == null) return;
+        int count = _server.ConnectedCount;
+        if (count > 0)
+        {
+            _statusLabel.Text = $"✓ {count} Connected / 已连接 {count} 台";
+            _statusLabel.RemoveThemeColorOverride("font_color");
+            _statusLabel.AddThemeColorOverride("font_color", new Color(0.4f, 0.9f, 0.4f));
+        }
+        else
+        {
+            _statusLabel.Text = "Scan with DG-LAB APP / 用 DG-LAB APP 扫码";
+            _statusLabel.RemoveThemeColorOverride("font_color");
+            _statusLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f));
+        }
+    }
+
+    private void RefreshClientList()
+    {
+        if (_clientListBox == null) return;
+
+        // 清空旧列表
+        foreach (var child in _clientListBox.GetChildren())
+            child.QueueFree();
+
+        var clients = _server.GetConnectedClients();
+        if (clients.Count == 0)
+        {
+            var empty = new Label
+            {
+                Text = "No connections / 暂无连接",
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            empty.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f));
+            empty.AddThemeFontSizeOverride("font_size", 13);
+            _clientListBox.AddChild(empty);
+            return;
+        }
+
+        foreach (var info in clients)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+
+            var label = new Label
+            {
+                Text = info.RemoteEndpoint,
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.85f));
+            label.AddThemeFontSizeOverride("font_size", 14);
+
+            var kickBtn = new Button { Text = "Kick" };
+            kickBtn.AddThemeFontSizeOverride("font_size", 12);
+            var targetId = info.TargetId;
+            kickBtn.Pressed += () => _server.DisconnectClient(targetId);
+
+            var blockBtn = new Button { Text = "Block" };
+            blockBtn.AddThemeFontSizeOverride("font_size", 12);
+            blockBtn.Pressed += () => _server.BlockClient(targetId);
+
+            row.AddChild(label);
+            row.AddChild(kickBtn);
+            row.AddChild(blockBtn);
+            _clientListBox.AddChild(row);
+        }
+    }
+
+    private void OnRefreshTick()
+    {
+        UpdateStatusLabel();
+        RefreshClientList();
+    }
+
     private void HideQR()
     {
         if (_qrLayer == null) return;
+
+        if (_refreshTimer != null)
+        {
+            _refreshTimer.Timeout -= OnRefreshTick;
+            _refreshTimer = null;
+        }
+        _statusLabel = null;
+        _clientListBox = null;
 
         RemoveChild(_qrLayer);
         _qrLayer.QueueFree();

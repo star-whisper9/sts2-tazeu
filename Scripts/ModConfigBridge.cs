@@ -98,10 +98,16 @@ internal static class ModConfigBridge
                 descriptions: new() { { "en", "Press to show/hide DG-LAB connection QR code" }, { "zhs", "按下显示/隐藏 DG-LAB 连接二维码" } },
                 onChanged: v => ShowQRKey = Convert.ToInt64(v)),
 
-            MakeEntry("disconnect_key", "Disconnect", ConfigTypeValue("KeyBind"),
+            MakeEntry("max_connections", "Max Connections", ConfigTypeValue("Slider"),
+                defaultValue: (float)config.MaxConnections, min: 1, max: 32, step: 1,
+                labels: new() { { "en", "Max Connections" }, { "zhs", "最大连接数" } },
+                descriptions: new() { { "en", "Maximum simultaneous APP connections" }, { "zhs", "允许同时连接的 APP 最大数量" } },
+                onChanged: v => config.MaxConnections = Math.Clamp((int)(float)v, 1, 64)),
+
+            MakeEntry("disconnect_key", "Disconnect All", ConfigTypeValue("KeyBind"),
                 defaultValue: (long)0,
-                labels: new() { { "en", "Disconnect" }, { "zhs", "断开连接" } },
-                descriptions: new() { { "en", "Press to disconnect current APP" }, { "zhs", "按下断开当前 APP 连接" } },
+                labels: new() { { "en", "Disconnect All" }, { "zhs", "断开所有连接" } },
+                descriptions: new() { { "en", "Press to disconnect all connected APPs" }, { "zhs", "按下断开所有已连接的 APP" } },
                 onChanged: v => DisconnectKey = Convert.ToInt64(v)),
 
             // ── 电击设置 ──
@@ -225,6 +231,7 @@ internal static class ModConfigBridge
         config.UseChannelA = GetValue("use_channel_a", config.UseChannelA);
         config.UseChannelB = GetValue("use_channel_b", config.UseChannelB);
         config.OnlyOwnOrbs = GetValue("only_own_orbs", config.OnlyOwnOrbs);
+        config.MaxConnections = Math.Clamp((int)GetValue("max_connections", (float)config.MaxConnections), 1, 64);
         config.ComboEnabled = GetValue("combo_enabled", config.ComboEnabled);
         config.ComboRate = GetValue("combo_rate", config.ComboRate * 100f) / 100f;
         config.ComboWindow = GetValue("combo_window", config.ComboWindow);

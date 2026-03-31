@@ -9,10 +9,10 @@ hero:
   actions:
     - theme: brand
       text: Usage Guide
-      link: /usage
+      link: ./usage
     - theme: alt
       text: Development Docs
-      link: /development
+      link: ./development
 
 features:
   - title: Rich Visual Configuration

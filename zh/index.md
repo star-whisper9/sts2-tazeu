@@ -9,10 +9,10 @@ hero:
   actions:
     - theme: brand
       text: 使用指南
-      link: /usage
+      link: ./usage
     - theme: alt
       text: 开发文档
-      link: /development
+      link: ./development
 
 features:
   - title: 可视化丰富配置

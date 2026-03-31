@@ -12,7 +12,7 @@ export default defineConfig({
     ],
   },
   locales: {
-    root: {
+    zh: {
       title: "杀戮尖塔 2 - 郊狼相生",
       label: "简体中文",
       lang: "zh-Hans",

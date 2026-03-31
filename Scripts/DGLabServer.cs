@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using MegaCrit.Sts2.Core.Logging;
 
 namespace TazeU.Scripts;
@@ -31,8 +27,10 @@ namespace TazeU.Scripts;
 ///   - bind: 握手阶段双向
 ///   - msg:  业务通信双向（强度/波形/清空/回传/反馈）
 /// </summary>
-public class DGLabServer
+public class DGLabServer(TazeUConfig config)
 {
+    #region 字段
+
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
     private WebSocket? _appSocket;
@@ -42,7 +40,7 @@ public class DGLabServer
     private string? _targetId;
     private volatile bool _isBound;
 
-    private readonly TazeUConfig _config;
+    private readonly TazeUConfig _config = config;
     private readonly Random _random = new();
 
     // Combo 连击状态
@@ -60,10 +58,9 @@ public class DGLabServer
     private int _currentStrengthA;
     private int _currentStrengthB;
 
-    public DGLabServer(TazeUConfig config)
-    {
-        _config = config;
-    }
+    #endregion
+
+    #region 服务端控制
 
     /// <summary>
     /// 获取 DG-LAB APP 扫码连接 URL。
@@ -73,8 +70,6 @@ public class DGLabServer
         var localIp = GetIpAddress();
         return $"https://www.dungeon-lab.com/app-download.php#DGLAB-SOCKET#ws://{localIp}:{_config.Port}/{_clientId}";
     }
-
-    // #region 服务端控制
 
     public void Start()
     {
@@ -130,8 +125,8 @@ public class DGLabServer
             _listener.Start();
 
             var localIp = GetIpAddress();
-            var connectUrl = $"https://www.dungeon-lab.com/app-download.php#DGLAB-SOCKET#ws://{localIp}:{_config.Port}/{_clientId}";
-            Log.Info($"[TazeU] WS server started on port {_config.Port} (TcpListener bypasses http.sys)");
+            var connectUrl = GetConnectUrl();
+            Log.Debug($"[TazeU] WS server started on port {_config.Port} (TcpListener bypasses http.sys)");
             Log.Info($"[TazeU] DG-LAB connect URL: {connectUrl}");
 
             while (!_cts!.Token.IsCancellationRequested)
@@ -149,9 +144,9 @@ public class DGLabServer
         }
     }
 
-    // #endregion
+    #endregion
 
-    // #region 连接处理
+    #region 连接处理
 
     private async Task HandleConnectionAsync(TcpClient tcpClient)
     {
@@ -160,7 +155,7 @@ public class DGLabServer
             var stream = tcpClient.GetStream();
             
             // 1. 读取 HTTP 握手头（逐字节读取，防止读丢即将到来的 WebSocket 数据帧）
-            var headerBytes = new System.Collections.Generic.List<byte>();
+            var headerBytes = new List<byte>();
             var buf = new byte[1];
             while (await stream.ReadAsync(buf, _cts?.Token ?? CancellationToken.None) > 0)
             {
@@ -352,9 +347,9 @@ public class DGLabServer
         }
     }
 
-    // #endregion
+    #endregion
 
-    // #region 发送指令
+    #region 发送指令
 
     private async Task SendRawAsync(string message)
     {
@@ -386,9 +381,7 @@ public class DGLabServer
         await SendRawAsync(json);
     }
 
-    // #endregion
-
-    // #region 指令封装
+    #endregion
 
     /// <summary>
     /// 触发一次电击。可从游戏线程安全调用（fire-and-forget）。
@@ -417,6 +410,8 @@ public class DGLabServer
         Log.Debug($"[TazeU] Shock triggered (damage={damage}, combo={_comboCount}, effective={effectiveDamage:F1}, A={strengthA}/{_strengthLimitA}, B={strengthB}/{_strengthLimitB})");
         _ = Task.Run(() => ExecuteShockAsync(strengthA, strengthB));
     }
+
+    #region 内部方法
 
     /// <summary>
     /// Stevens 幂律逆映射：damage → [MinStrength, maxStrength]。
@@ -503,8 +498,6 @@ public class DGLabServer
         }
     }
 
-    // #endregion
-
     /// <summary>
     /// 获取当前应该使用的 IP 地址（优先使用用户配置的 BindAddress，否则自动检测）。
     /// </summary>
@@ -533,4 +526,6 @@ public class DGLabServer
             return "127.0.0.1";
         }
     }
+
+    #endregion
 }

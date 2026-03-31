@@ -7,19 +7,13 @@ namespace TazeU.Scripts;
 /// 游戏内 Overlay 节点：处理快捷键输入，显示/隐藏 QR 码弹窗，触发测试电击。
 /// 作为 Node 挂载到 SceneTree.Root，通过 _UnhandledKeyInput 捕获按键。
 /// </summary>
-internal partial class TazeUOverlay : Node
+internal partial class TazeUOverlay(DGLabServer server, TazeUConfig config) : Node
 {
-    private readonly DGLabServer _server;
-    private readonly TazeUConfig _config;
+    private readonly DGLabServer _server = server;
+    private readonly TazeUConfig _config = config;
 
     private CanvasLayer? _qrLayer;
     private bool _qrVisible;
-
-    public TazeUOverlay(DGLabServer server, TazeUConfig config)
-    {
-        _server = server;
-        _config = config;
-    }
 
     public override void _UnhandledKeyInput(InputEvent @event)
     {

@@ -10,7 +10,7 @@ namespace TazeU.Scripts;
 /// </summary>
 public static class DGLabProtocol
 {
-    // #region 波形预设
+    #region 波形
 
     /// <summary>
     /// 呼吸
@@ -155,10 +155,6 @@ public static class DGLabProtocol
       "0A0A0A0A00000000"
     ];
 
-    // #endregion
-
-    // #region 波形查找
-
     /// <summary>所有预设波形集合（用于 Random 模式）。</summary>
     public static readonly string[][] AllWaveforms =
     [
@@ -180,8 +176,6 @@ public static class DGLabProtocol
         _ => null
     };
 
-    // #endregion
-
     /// <summary>
     /// 生成恒定波形数据块（固定频率和强度）。
     /// </summary>
@@ -191,6 +185,11 @@ public static class DGLabProtocol
         byte i = (byte)Math.Clamp(intensity, 0, 100);
         return $"{f:X2}{f:X2}{f:X2}{f:X2}{i:X2}{i:X2}{i:X2}{i:X2}";
     }
+
+    #endregion
+
+
+    #region 指令生成
 
     /// <summary>
     /// 强度控制指令。
@@ -222,4 +221,6 @@ public static class DGLabProtocol
     /// <param name="channel">1=A, 2=B</param>
     public static string ClearCommand(int channel)
         => $"clear-{channel}";
+    
+    #endregion
 }

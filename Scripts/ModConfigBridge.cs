@@ -136,6 +136,12 @@ internal static class ModConfigBridge
                 labels: new() { { "en", "Channel B" }, { "zhs", "B 通道" } },
                 onChanged: v => config.UseChannelB = (bool)v),
 
+            MakeEntry("only_own_orbs", "Only Own Orbs", ConfigTypeValue("Toggle"),
+                defaultValue: config.OnlyOwnOrbs,
+                labels: new() { { "en", "Only Own Orbs" }, { "zhs", "仅自己的电球" } },
+                descriptions: new() { { "en", "Only trigger shocks from your own lightning orbs (for multiplayer)" }, { "zhs", "仅自己的闪电充能球触发电击（多人模式适用）" } },
+                onChanged: v => config.OnlyOwnOrbs = (bool)v),
+
             // ── 连击递增 ──
             MakeEntry("header_combo", "", ConfigTypeValue("Header"),
                 labels: new() { { "en", "Combo Escalation" }, { "zhs", "连击递增" } }),
@@ -218,6 +224,7 @@ internal static class ModConfigBridge
         config.Waveform = GetValue("waveform", config.Waveform);
         config.UseChannelA = GetValue("use_channel_a", config.UseChannelA);
         config.UseChannelB = GetValue("use_channel_b", config.UseChannelB);
+        config.OnlyOwnOrbs = GetValue("only_own_orbs", config.OnlyOwnOrbs);
         config.ComboEnabled = GetValue("combo_enabled", config.ComboEnabled);
         config.ComboRate = GetValue("combo_rate", config.ComboRate * 100f) / 100f;
         config.ComboWindow = GetValue("combo_window", config.ComboWindow);

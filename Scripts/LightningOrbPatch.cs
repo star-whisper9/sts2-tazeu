@@ -1,4 +1,5 @@
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models.Orbs;
 
@@ -14,8 +15,17 @@ public static class LightningOrbPassivePatch
     [HarmonyPostfix]
     public static void Postfix(LightningOrb __instance)
     {
+        if (Entry.Config is { OnlyOwnOrbs: true })
+        {
+            try
+            {
+                var localNetId = LocalContext.NetId;
+                if (localNetId != null && __instance.Owner.NetId != localNetId.Value) return;
+            }
+            catch { }
+        }
         var damage = __instance.PassiveVal;
-        Log.Debug($"[TazeU] Lightning Passive fired, damage={damage}");
+        Log.Warn($"[TazeU] Lightning Passive fired, damage={damage}");
         Entry.Server?.TriggerShock(damage);
     }
 }
@@ -26,8 +36,17 @@ public static class LightningOrbEvokePatch
     [HarmonyPostfix]
     public static void Postfix(LightningOrb __instance)
     {
+        if (Entry.Config is { OnlyOwnOrbs: true })
+        {
+            try
+            {
+                var localNetId = LocalContext.NetId;
+                if (localNetId != null && __instance.Owner.NetId != localNetId.Value) return;
+            }
+            catch { }
+        }
         var damage = __instance.EvokeVal;
-        Log.Debug($"[TazeU] Lightning Evoke fired, damage={damage}");
+        Log.Warn($"[TazeU] Lightning Evoke fired, damage={damage}");
         Entry.Server?.TriggerShock(damage);
     }
 }

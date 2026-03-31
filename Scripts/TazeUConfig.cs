@@ -42,6 +42,9 @@ public class TazeUConfig
     /// <summary>连击最大叠加层数（防止无限叠加）。</summary>
     public int ComboMaxStacks { get; set; } = 8;
 
+    /// <summary>仅自己的电球触发电击（多人模式下区分玩家）。</summary>
+    public bool OnlyOwnOrbs { get; set; } = true;
+
     /// <summary>测试电击伤害值（用于调试校准）。</summary>
     public int TestDamage { get; set; } = 3;
 
